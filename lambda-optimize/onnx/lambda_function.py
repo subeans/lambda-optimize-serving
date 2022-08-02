@@ -99,4 +99,3 @@ def lambda_handler(event, context):
             'user_email': user_email,
             'convert_time': convert_time
         }
-

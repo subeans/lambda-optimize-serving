@@ -35,7 +35,7 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
 
     # ImageClf input 
     if wtype == "img":
-        if model_name=="inception_v3":
+        if model_name == "inception_v3":
             imgsize=299
         input_shape = (batchsize, 3, imgsize, imgsize)
         data_array = np.random.uniform(0, 255, size=input_shape).astype("float32")

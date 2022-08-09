@@ -86,9 +86,13 @@ def lambda_handler(event, context):
     log_group_name = context.log_group_name
 
     if "tvm" in optimizer:
-        start_time = time.time()
-        res = tvm_serving(workload_type, framework, model_name, model_size, batchsize)
-        running_time = time.time() - start_time
+        try:
+            start_time = time.time()
+            res = tvm_serving(workload_type, framework, model_name, model_size, batchsize)
+            running_time = time.time() - start_time
+        except:
+            running_time=0
+            print(f"Error in {model_name} {model_size} {lambda_memory} {batchsize}") 
 
         return {
             'workload_type': workload_type,

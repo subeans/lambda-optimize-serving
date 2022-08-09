@@ -97,11 +97,15 @@ def lambda_handler(event, context):
                 'request_id':event[i]['request_id'],
                 'log_group_name':event[i]['log_group_name']
             }
-            max_memory_used = getMemoryUsed(info)
-            print(max_memory_used)
-            info['max_memory_used'] = max_memory_used
-            upload_data(info)
-#             ses_send(user_email,info,info['max_memory_used'])
+            if info['inference_time'] == 0:
+                print("Error Exist in Process")
+                return
+            else:    
+                max_memory_used = getMemoryUsed(info)
+                print(max_memory_used)
+                info['max_memory_used'] = max_memory_used
+                upload_data(info)
+    #             ses_send(user_email,info,info['max_memory_used'])
 
         else:
             pass

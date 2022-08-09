@@ -4,6 +4,7 @@ serving_build=$1
 convert_build=$2
 
 if $serving_build:
+then
   export IMAGE_NAME="serving"
   export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
 
@@ -31,8 +32,10 @@ if $serving_build:
 
     docker push $ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/$IMAGE_NAME'_'$serv
   done
+fi
 
 if $convert_build:
+then
   export IMAGE_NAME="convert_torch"
 
   converting="arm_tvm"
@@ -53,3 +56,4 @@ if $convert_build:
       --region us-west-2
     docker push $ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/$IMAGE_NAME'_'$serv
   done
+fi

@@ -3,13 +3,13 @@
 serving_build=$1
 convert_build=$2
 
+sudo chmod 666 /var/run/docker.sock
+sudo service docker start
+
 if $serving_build:
 then
   export IMAGE_NAME="serving"
   export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
-
-  sudo chmod 666 /var/run/docker.sock
-  sudo service docker start
 
   serving="intel_onnx intel_torch intel_tvm"
 

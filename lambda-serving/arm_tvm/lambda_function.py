@@ -84,11 +84,16 @@ def lambda_handler(event, context):
     convert_time = event['convert_time']
     request_id = context.aws_request_id
     log_group_name = context.log_group_name
-
+    
+    running_time=0
+   
     if "tvm" in optimizer:
-        start_time = time.time()
-        res = tvm_serving(workload_type, framework, model_name, model_size, batchsize)
-        running_time = time.time() - start_time
+        try:
+            start_time = time.time()
+            res = tvm_serving(workload_type, framework, model_name, model_size, batchsize)
+            running_time = time.time() - start_time
+        except:
+            print(f"Error in {model_name} {model_size} {lambda_memory} {batchsize}") 
 
         return {
             'workload_type': workload_type,

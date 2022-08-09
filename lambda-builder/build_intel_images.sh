@@ -6,7 +6,7 @@ convert_build=$2
 sudo chmod 666 /var/run/docker.sock
 sudo service docker start
 
-if $serving_build:
+if [ $serving_build ]
 then
   export IMAGE_NAME="serving"
   export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
@@ -34,7 +34,7 @@ then
   done
 fi
 
-if $convert_build:
+if [ $convert_build ]
 then
   export IMAGE_NAME="convert_torch"
 

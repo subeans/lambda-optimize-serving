@@ -73,7 +73,10 @@ def lambda_handler(event, context):
     if "base" in optimizer:
 
         start_time = time.time()
-        res = base_serving(workload_type, model_name, model_size, batchsize)
+        try:
+            res = base_serving(workload_type, model_name, model_size, batchsize)
+        except:
+            print(f"Error in {model_name} {model_size} {lambda_memory} {batchsize}") 
         running_time = time.time() - start_time
 
         return {

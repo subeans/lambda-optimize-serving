@@ -75,7 +75,7 @@ def lambda_handler(event, context):
             start_time = time.time()
             res = base_serving(workload_type, model_name, model_size, batchsize)
             running_time = time.time() - start_time
-        except:
+        except RuntimeError:
             running_time=0
             print(f"Error in {model_name} {model_size} {lambda_memory} {batchsize}") 
         

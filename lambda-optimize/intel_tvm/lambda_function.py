@@ -10,12 +10,12 @@ import json
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
 s3_client = boto3.client('s3') 
 
-def check_results(prefix,model_size,model_name):    
+def check_results(prefix,model_size,model_name,batchsize):    
     exist=False
 
     obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
 
-    check = prefix + f'{model_name}_{model_size}.tar'
+    check = prefix + f'{model_name}_{model_size}_{batchsize}.tar'
     contents_list = obj_list['Contents']
     for content in contents_list:
         # print(content)
@@ -107,22 +107,22 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
 
     if framework=="onnx":
         prefix = f'models/tvm/intel/onnx/'
-        exist = check_results(prefix,model_size,model_name)
+        exist = check_results(prefix,model_size,model_name,batchsize)
         if exist==False:
             os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)
             lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
             print("export done :",f"{model_name}_{batchsize}.tar")
-            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/onnx/{model_name}_{model_size}.tar')
+            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/onnx/{model_name}_{model_size}_{batchsize}.tar')
             print("S3 upload done")
 
     else:
         prefix = f'models/tvm/intel/'
-        exist = check_results(prefix,model_size,model_name)
+        exist = check_results(prefix,model_size,model_name,batchsize)
         if exist==False:
             os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)
             lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
             print("export done :",f"{model_name}_{batchsize}.tar")
-            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/{model_name}_{model_size}.tar')
+            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/{model_name}_{model_size}_{batchsize}.tar')
             print("S3 upload done")
 
     return convert_time

@@ -10,6 +10,19 @@ import json
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
 s3_client = boto3.client('s3') 
 
+def check_results(prefix,model_size,model_name):    
+    exist=False
+
+    obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
+
+    check = prefix + f'{model_name}_{model_size}.tar'
+    contents_list = obj_list['Contents']
+    for content in contents_list:
+        # print(content)
+        if content['Key']== check : 
+            exist=True
+            break
+    return exist 
 
 def load_model(framework,model_name,model_size):    
     import onnx
@@ -63,12 +76,12 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
         # torch imageclf 
         if wtype == "img":
             traced_model = torch.jit.trace(model, torch_data)
-            mod, params = relay.frontend.from_pytorch(traced_model, input_infos=[('input0', input_shape)],default_dtype="float32")
-
+            input_info = [('input0', input_shape)]
         # torch nlp
         elif wtype == "nlp":
             traced_model = torch.jit.trace(model, tokens_tensor,segments_tensors)
-            mod, params = relay.frontend.from_pytorch(traced_model, input_infos=[('input0', [batchsize,seq_length])],default_dtype="float32")
+            input_info = [('input0', [batchsize,seq_length])]
+        mod, params = relay.frontend.from_pytorch(traced_model, input_infos=input_info, default_dtype="float32")
 
     if layout == "NHWC":
         desired_layouts = {"nn.conv2d": ["NHWC", "default"]}
@@ -89,18 +102,28 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
     with tvm.transform.PassContext(opt_level=3,required_pass=["FastMath"]):
         mod = relay.transform.InferType()(mod)
         lib = relay.build(mod, target=target, params=params)
-
-    os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)
-    lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
-    print("export done :",f"{model_name}_{batchsize}.tar")
     convert_time = time.time() - convert_start_time
-    
-    if framework=="onnx":
-        s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/onnx/{model_name}_{model_size}.tar')
-    else:
-        s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/{model_name}_{model_size}.tar')
 
-    print("S3 upload done")
+
+    if framework=="onnx":
+        prefix = f'models/tvm/intel/onnx/'
+        exist = check_results(prefix,model_size,model_name)
+        if exist==False:
+            os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)
+            lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
+            print("export done :",f"{model_name}_{batchsize}.tar")
+            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/onnx/{model_name}_{model_size}.tar')
+            print("S3 upload done")
+
+    else:
+        prefix = f'models/tvm/intel/'
+        exist = check_results(prefix,model_size,model_name)
+        if exist==False:
+            os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)
+            lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
+            print("export done :",f"{model_name}_{batchsize}.tar")
+            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/{model_name}_{model_size}.tar')
+            print("S3 upload done")
 
     return convert_time
 

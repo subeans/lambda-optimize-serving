@@ -9,6 +9,19 @@ import boto3
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
 s3_client = boto3.client('s3') 
 
+def check_results(prefix,model_size,model_name):    
+    exist=False
+
+    obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
+
+    check = prefix + f'{model_name}_{model_size}.tar'
+    contents_list = obj_list['Contents']
+    for content in contents_list:
+        # print(content)
+        if content['Key']== check : 
+            exist=True
+            break
+    return exist 
 
 def load_model(model_name,model_size):
     import torch
@@ -41,18 +54,15 @@ def optimize_onnx(wtype,model,model_name,batchsize,model_size,imgsize=224,seq_le
     if wtype == "img":   
         inputs = torch.randn(batchsize, 3, imgsize, imgsize)
 
-        torch.onnx.export(model, inputs, output_onnx, export_params=True, verbose=False,do_constant_folding=True,
-                                input_names=input_names, output_names=output_names,dynamic_axes= {'input0' : {0 : 'batch_size'},    # variable length axes
-                                'output0' : {0 : 'batch_size'}})
-
     elif wtype=="nlp":
         inputs = np.random.randint(0, 2000, size=(seq_length))
         token_types = np.random.randint(0,2,size=(seq_length))
 
         tokens_tensor = torch.tensor(np.array([inputs]))
         segments_tensors = torch.tensor(np.array([token_types]))
+        inputs = (tokens_tensor,segments_tensors)
 
-        torch.onnx.export(model,(tokens_tensor,segments_tensors), output_onnx, export_params=True, verbose=False,do_constant_folding=True,
+    torch.onnx.export(model,inputs, output_onnx, export_params=True, verbose=False,do_constant_folding=True,
                                 input_names=input_names, output_names=output_names,dynamic_axes= {'input0' : {0 : 'batch_size'},    # variable length axes
                                 'output0' : {0 : 'batch_size'}})
 
@@ -60,10 +70,12 @@ def optimize_onnx(wtype,model,model_name,batchsize,model_size,imgsize=224,seq_le
     convert_time = time.time()-convert_start_time
     print("Convert Complete")
 
-
-    #s3에 업로드 
-    s3_client.upload_file(f'/tmp/onnx/{model_name}/{model_name}_{batchsize}.onnx',BUCKET_NAME,f'models/onnx/{model_name}_{model_size}.onnx')
-    print("S3 upload done")
+    prefix = f'models/onnx/'
+    exist = check_results(prefix,model_size,model_name)
+    if exist == False:
+        #s3에 업로드 
+        s3_client.upload_file(f'/tmp/onnx/{model_name}/{model_name}_{batchsize}.onnx',BUCKET_NAME,f'models/onnx/{model_name}_{model_size}.onnx')
+        print("S3 upload done")
 
     return convert_time
 

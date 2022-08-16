@@ -11,16 +11,16 @@ import tvm.contrib.graph_executor as runtime
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
 
 
-def load_model(framework, model_name, model_size):
+def load_model(framework, model_name, model_size,batchsize):
     load_start = time.time()
     s3_client = boto3.client('s3')
 
     os.makedirs(os.path.dirname(f'/tmp/tvm/'), exist_ok=True)
     if "onnx" in framework:
-        s3_client.download_file(BUCKET_NAME, f'models/tvm/arm/onnx/{model_name}_{model_size}.tar',
+        s3_client.download_file(BUCKET_NAME, f'models/tvm/arm/onnx/{model_name}_{model_size}_{batchsize}.tar',
                                 f'/tmp/tvm/{model_name}_{model_size}.tar')
     else:
-        s3_client.download_file(BUCKET_NAME, f'models/tvm/arm/{model_name}_{model_size}.tar',
+        s3_client.download_file(BUCKET_NAME, f'models/tvm/arm/{model_name}_{model_size}_{batchsize}.tar',
                                 f'/tmp/tvm/{model_name}_{model_size}.tar')
 
     model = f"/tmp/tvm/{model_name}_{model_size}.tar"
@@ -30,7 +30,7 @@ def load_model(framework, model_name, model_size):
 
 def tvm_serving(wtype, framework, model_name, model_size, batchsize, imgsize=224, repeat=10):
     dev = tvm.cpu()
-    model_path = load_model(framework, model_name, model_size)
+    model_path = load_model(framework, model_name, model_size,batchsize)
     loaded_lib = tvm.runtime.load_module(model_path)
     module = runtime.GraphModule(loaded_lib["default"](dev))
 

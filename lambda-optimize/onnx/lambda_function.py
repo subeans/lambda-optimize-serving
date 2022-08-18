@@ -9,12 +9,13 @@ import boto3
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
 s3_client = boto3.client('s3') 
 
+
 def check_results(prefix,model_size,model_name):    
     exist=False
 
     obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
 
-    check = prefix + f'{model_name}_{model_size}.tar'
+    check = prefix + f'{model_name}_{model_size}.onnx'
     contents_list = obj_list['Contents']
     for content in contents_list:
         # print(content)
@@ -22,6 +23,16 @@ def check_results(prefix,model_size,model_name):
             exist=True
             break
     return exist 
+
+def update_results(model_name,model_size,batchsize,lambda_memory,convert_time):
+    info = {'convert_time' : convert_time}
+    with open(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json','w') as f:
+        json.dump(info, f, ensure_ascii=False, indent=4)  
+    
+    s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json',BUCKET_NAME,f'results/{optimizer}/{hardware}/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json')
+    print("upload done : convert time results")
+
+
 
 def load_model(model_name,model_size):
     import torch
@@ -54,15 +65,18 @@ def optimize_onnx(wtype,model,model_name,batchsize,model_size,imgsize=224,seq_le
     if wtype == "img":   
         inputs = torch.randn(batchsize, 3, imgsize, imgsize)
 
+        torch.onnx.export(model, inputs, output_onnx, export_params=True, verbose=False,do_constant_folding=True,
+                                input_names=input_names, output_names=output_names,dynamic_axes= {'input0' : {0 : 'batch_size'},    # variable length axes
+                                'output0' : {0 : 'batch_size'}})
+
     elif wtype=="nlp":
         inputs = np.random.randint(0, 2000, size=(seq_length))
         token_types = np.random.randint(0,2,size=(seq_length))
 
         tokens_tensor = torch.tensor(np.array([inputs]))
         segments_tensors = torch.tensor(np.array([token_types]))
-        inputs = (tokens_tensor,segments_tensors)
 
-    torch.onnx.export(model,inputs, output_onnx, export_params=True, verbose=False,do_constant_folding=True,
+        torch.onnx.export(model,(tokens_tensor,segments_tensors), output_onnx, export_params=True, verbose=False,do_constant_folding=True,
                                 input_names=input_names, output_names=output_names,dynamic_axes= {'input0' : {0 : 'batch_size'},    # variable length axes
                                 'output0' : {0 : 'batch_size'}})
 
@@ -70,12 +84,10 @@ def optimize_onnx(wtype,model,model_name,batchsize,model_size,imgsize=224,seq_le
     convert_time = time.time()-convert_start_time
     print("Convert Complete")
 
-    prefix = f'models/onnx/'
-    exist = check_results(prefix,model_size,model_name)
-    if exist == False:
-        #s3에 업로드 
-        s3_client.upload_file(f'/tmp/onnx/{model_name}/{model_name}_{batchsize}.onnx',BUCKET_NAME,f'models/onnx/{model_name}_{model_size}.onnx')
-        print("S3 upload done")
+
+    #s3에 업로드 
+    s3_client.upload_file(f'/tmp/onnx/{model_name}/{model_name}_{batchsize}.onnx',BUCKET_NAME,f'models/onnx/{model_name}_{model_size}.onnx')
+    print("S3 upload done")
 
     return convert_time
 
@@ -91,15 +103,21 @@ def lambda_handler(event, context):
     lambda_memory = event['lambda_memory']
     convert_time = 0
 
-    if "onnx" in configuration["intel"] or "onnx" in configuration["arm"]:
-        start_time = time.time()
-        model = load_model(model_name,model_size)
-        load_time = time.time() - start_time
-        print("Model load time : ",load_time)
+    # convert한 모델이 있는지 확인 
+    prefix = 'models/onnx/'
+    exist = check_results(prefix,model_size,model_name)
 
-        print("Model optimize - Torch model to ONNX model")
-        convert_time = optimize_onnx(workload_type,model,model_name,batchsize,model_size)
+    if exist==False:
+        if "onnx" in configuration["intel"] or "onnx" in configuration["arm"]:
+            start_time = time.time()
+            model = load_model(model_name,model_size)
+            load_time = time.time() - start_time
+            print("Model load time : ",load_time)
 
+            print("Model optimize - Torch model to ONNX model")
+            convert_time = optimize_onnx(workload_type,model,model_name,batchsize,model_size)
+            update_results(model_name,model_size,batchsize,lambda_memory,convert_time)
+            
     return {
             'workload_type':workload_type,
             'model_name': model_name,

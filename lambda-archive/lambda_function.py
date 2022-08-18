@@ -38,7 +38,10 @@ def getMemoryUsed(info):
     return max_memory_used
 
 def getLatency(optimizer,hardware):
-    prefix = f'results/{optimizer}/{hardware}/'
+    if optimizer=="onnx":
+        prefix = f'results/{optimizer}/'
+    else:
+        prefix = f'results/{optimizer}/{hardware}/'
     obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
 
     convert_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_convert.json'

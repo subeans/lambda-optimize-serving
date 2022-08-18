@@ -24,6 +24,14 @@ def check_results(prefix,model_size,model_name,batchsize):
             break
     return exist 
 
+def update_results(model_name,model_size,batchsize,lambda_memory,convert_time):
+    info = {'convert_time' : convert_time}
+    with open(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json','w') as f:
+        json.dump(info, f, ensure_ascii=False, indent=4)  
+    
+    s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json',BUCKET_NAME,f'results/{optimizer}/{hardware}/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json')
+    print("upload done : convert time results")
+
 def load_model(framework,model_name,model_size):    
     import onnx
 
@@ -104,26 +112,17 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
         lib = relay.build(mod, target=target, params=params)
     convert_time = time.time() - convert_start_time
 
+    os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)    
+    lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
+    print("export done :",f"{model_name}_{batchsize}.tar")
 
     if framework=="onnx":
-        prefix = f'models/tvm/intel/onnx/'
-        exist = check_results(prefix,model_size,model_name,batchsize)
-        if exist==False:
-            os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)
-            lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
-            print("export done :",f"{model_name}_{batchsize}.tar")
-            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/onnx/{model_name}_{model_size}_{batchsize}.tar')
-            print("S3 upload done")
+        s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/onnx/{model_name}_{model_size}_{batchsize}.tar')
 
     else:
-        prefix = f'models/tvm/intel/'
-        exist = check_results(prefix,model_size,model_name,batchsize)
-        if exist==False:
-            os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)
-            lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
-            print("export done :",f"{model_name}_{batchsize}.tar")
-            s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/{model_name}_{model_size}_{batchsize}.tar')
-            print("S3 upload done")
+        s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/{model_name}_{model_size}_{batchsize}.tar')
+    
+    print("S3 upload done")
 
     return convert_time
 
@@ -138,23 +137,31 @@ def lambda_handler(event, context):
     lambda_memory = event['lambda_memory']
     convert_time = 0
 
-    if "tvm" in configuration["intel"] :
-        start_time = time.time()
-        model = load_model(framework,model_name,model_size)
-        load_time = time.time() - start_time
-        print("Model load time : ",load_time)
+    # convert한 모델이 있는지 확인 
+    if "onnx" in framework:
+        prefix = 'models/tvm/intel/onnx/'
+    else:
+        prefix = 'models/tvm/intel/'
+    exist = check_results(prefix,model_size,model_name,batchsize)
 
-        print(f"Hardware optimize - {framework} model to TVM model")
-        convert_time = optimize_tvm(workload_type,framework,model,model_name,batchsize,model_size)
+    if exist == False:
+        if "tvm" in configuration["intel"] :
+            start_time = time.time()
+            model = load_model(framework,model_name,model_size)
+            load_time = time.time() - start_time
+            print("Model load time : ",load_time)
+
+            print(f"Hardware optimize - {framework} model to TVM model")
+            convert_time = optimize_tvm(workload_type,framework,model,model_name,batchsize,model_size)
+            update_results(model_name,model_size,batchsize,lambda_memory,convert_time)
 
     return {
             'workload_type':workload_type,
             'model_name': model_name,
             'model_size': model_size,
-            'configuration': event['configuration'],
             'framework': framework,
-            'lambda_memory': lambda_memory,
+            'configuration': event['configuration'],
             'batchsize': batchsize,
             'user_email': user_email,
-            'convert_time': convert_time
+            'lambda_memory': lambda_memory
         }

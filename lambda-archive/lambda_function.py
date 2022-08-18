@@ -37,19 +37,63 @@ def getMemoryUsed(info):
 
     return max_memory_used
 
-def upload_data(info):    
-    model_name = info['model_name']
-    model_size = info['model_size']
-    optimizer = info['optimizer']
-    batchsize = info['batchsize']
-    lambda_memory = info['lambda_memory']
-    hardware = info['hardware']
-    with open(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}.json','w') as f:
-        json.dump(info, f, ensure_ascii=False, indent=4)  
-    s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}.json',BUCKET_NAME,f'results/{optimizer}/{hardware}/{model_name}_{model_size}_{batchsize}_{lambda_memory}.json')
+def getLatency(optimizer,hardware):
+    prefix = f'results/{optimizer}/{hardware}/'
+    obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
 
-def ses_send(user_email,info,max_memory_used):
-    dst_format = {"ToAddresses":[f"{user_email}"],
+    convert_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_convert.json'
+    inference_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_inference.json'
+    contents_list = obj_list['Contents']
+
+    for content in contents_list:
+        # print(content)
+        if content['Key']== convert_check : 
+            # 파일 내용을 읽어오기
+            obj = s3.Object(BUCKET_NAME,f"{convert_check}")
+            bytes_value = obj.get()['Body'].read()
+            filejson = bytes_value.decode('utf8')
+            fileobj = json.loads(filejson)
+            print(fileobj)
+            convert_time = fileobj['convert_time']
+
+        if content['Key']==inference_check : 
+            obj = s3.Object(BUCKET_NAME,f"{inference_check}")
+            bytes_value = obj.get()['Body'].read()
+            filejson = bytes_value.decode('utf8')
+            fileobj = json.loads(filejson)
+            print(fileobj)
+            inference_time = fileobj['inference_time']
+
+    return convert_time, inference_time
+
+def upload_data(info,max_memory_used):    
+    convert_time, inference_time = getLatency()
+
+    get_info = {
+            'model_name':info['model_name'],
+            'model_size':info['model_size'],
+            'hardware':info['hardware'],
+            'framework':info['framework'],
+            'optimizer':info['optimizer'],
+            'lambda_memory':info['lambda_memory'],
+            'batchsize':info['batchsize'],
+            'convert_time':convert_time,
+            'inference_time':inference_time,
+            'user_email':info['user_email'],
+            'request_id':info['request_id'],
+            'log_group_name':info['log_group_name'],
+            'max_memory_used':max_memory_used
+        }
+
+
+    with open(f'/tmp/{get_info['model_name']}_{get_info['model_size']}_{get_info['batchsize']}_{get_info['lambda_memory']}.json','w') as f:
+        json.dump(get_info, f, ensure_ascii=False, indent=4)  
+    s3_client.upload_file(f'/tmp/{get_info['model_name']}_{get_info['model_size']}_{get_info['batchsize']}_{get_info['lambda_memory']}.json',BUCKET_NAME,f'results/{get_info['optimizer']}/{get_info['hardware']}/{get_info['model_name']}_{get_info['model_size']}_{get_info['batchsize']}_{get_info['lambda_memory']}.json')
+
+    return get_info
+
+def ses_send(info,max_memory_used):
+    dst_format = {"ToAddresses":[f"{info['user_email']}"],
     "CcAddresses":[],
     "BccAddresses":[]}
 
@@ -65,7 +109,7 @@ def ses_send(user_email,info,max_memory_used):
                         },
                         "Body": {
                             "Text": {
-                                "Data": f"AYCI convert time results\n---------------------------------------\n{info['model_name']} convert using {info['optimizer'].upper()} on {info['hardware'].upper()} \n{info['model_name']} size : {info['model_size']} MB\nConvert {info['model_name']} latency : {round(info['convert_time'],4)} s\n\nAYCI inference time results\n---------------------------------------\n{info['model_name']} inference Done!\n{info['model_name']} size : {info['model_size']} MB\nInference batchsize : {info['batchsize']}\nInference {info['model_name']} latency on {info['hardware'].upper()}: {round(info['inference_time'],4)} s\n-----------------------------------------------\nLambda memory size : {info['lambda_memory']}\nMax Memory Used : {max_memory_used}",
+                                "Data": f"AYCI convert time results\n---------------------------------------\n{info['model_name']} convert using {info['optimizer'].upper()} on {info['hardware'].upper()} \n{info['model_name']} size : {info['model_size']} MB\nConvert {info['model_name']} latency : {round(info['convert_time'],4)} s\n\nAYCI inference time results\n---------------------------------------\n{info['model_name']} inference Done!\n{info['model_name']} size : {info['model_size']} MB\nInference batchsize : {info['batchsize']}\nInference {info['model_name']} latency on {info['hardware'].upper()}: {round(info['inference_time'],4)} s\n-----------------------------------------------\nLambda memory size : {info['lambda_memory']}\nMax Memory Used : {info['max_memory_used']}",
                                 "Charset": "UTF-8"
                             },
                         }
@@ -83,7 +127,6 @@ def lambda_handler(event, context):
 
     for i in range(len(event)):
         if event[i]['execute'] :
-            user_email = event[i]['user_email']
             info = {
                 'model_name':event[i]['model_name'],
                 'model_size':event[i]['model_size'],
@@ -92,20 +135,15 @@ def lambda_handler(event, context):
                 'optimizer':event[i]['optimizer'],
                 'lambda_memory':event[i]['lambda_memory'],
                 'batchsize':event[i]['batchsize'],
-                'convert_time':event[i]['convert_time'],
-                'inference_time':event[i]['inference_time'],
+                'user_email':event[i]['user_email']
                 'request_id':event[i]['request_id'],
                 'log_group_name':event[i]['log_group_name']
             }
-            if info['inference_time'] == 0:
-                print("Error Exist in Process")
-                return
-            else:    
-                max_memory_used = getMemoryUsed(info)
-                print(max_memory_used)
-                info['max_memory_used'] = max_memory_used
-                upload_data(info)
-    #             ses_send(user_email,info,info['max_memory_used'])
+            max_memory_used = getMemoryUsed(info)
+            print(max_memory_used)
+
+            get_info = upload_data(info,max_memory_used)
+            ses_send(get_info)
 
         else:
             pass

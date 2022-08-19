@@ -37,40 +37,41 @@ def getMemoryUsed(info):
 
     return max_memory_used
 
-def getLatency(optimizer,hardware):
-    if optimizer=="onnx":
-        prefix = f'results/{optimizer}/'
-    else:
-        prefix = f'results/{optimizer}/{hardware}/'
+def getLatency(prefix, check , type):
     obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
-
-    convert_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_convert.json'
-    inference_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_inference.json'
     contents_list = obj_list['Contents']
 
     for content in contents_list:
         # print(content)
-        if content['Key']== convert_check : 
+        if content['Key']== check : 
             # 파일 내용을 읽어오기
             obj = s3.Object(BUCKET_NAME,f"{convert_check}")
             bytes_value = obj.get()['Body'].read()
             filejson = bytes_value.decode('utf8')
             fileobj = json.loads(filejson)
             print(fileobj)
-            convert_time = fileobj['convert_time']
+            get_latency = fileobj[type']
 
-        if content['Key']==inference_check : 
-            obj = s3.Object(BUCKET_NAME,f"{inference_check}")
-            bytes_value = obj.get()['Body'].read()
-            filejson = bytes_value.decode('utf8')
-            fileobj = json.loads(filejson)
-            print(fileobj)
-            inference_time = fileobj['inference_time']
-
-    return convert_time, inference_time
+    return get_latency
 
 def upload_data(info,max_memory_used):    
-    convert_time, inference_time = getLatency()
+    # get data from S3 
+    if info['optimizer'] == "onnx":
+        prefix = f'results/{optimizer}/'
+    else:
+        prefix = f'results/{optimizer}/{hardware}/'
+    
+    # get convert_time 
+    try:
+        convert_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_convert.json'
+        convert_time = getLatency(prefix, convert_check, "convert_time")
+    except:
+        # base 인 경우 convert time 0 
+        convert_time = 0
+    # get inference_time 
+    inference_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_inference.json'
+    inference_time = getLatency(prefix,inference_check,"inference_median")
+
 
     get_info = {
             'model_name':info['model_name'],
@@ -95,7 +96,7 @@ def upload_data(info,max_memory_used):
 
     return get_info
 
-def ses_send(info,max_memory_used):
+def ses_send(info):
     dst_format = {"ToAddresses":[f"{info['user_email']}"],
     "CcAddresses":[],
     "BccAddresses":[]}

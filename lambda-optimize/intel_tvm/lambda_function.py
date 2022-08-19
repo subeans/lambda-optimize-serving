@@ -24,18 +24,18 @@ def check_results(prefix,model_size,model_name,batchsize):
             break
     return exist 
 
-def update_results(framework,model_name,model_size,batchsize,lambda_memory,convert_time,load_time):
+def update_results(framework,model_name,model_size,batchsize,convert_time,load_time):
     info = {'base_model_load_time':load_time,
             'convert_time' : convert_time}
 
-    with open(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json','w') as f:
+    with open(f'/tmp/{model_name}_{model_size}_{batchsize}_convert.json','w') as f:
         json.dump(info, f, ensure_ascii=False, indent=4)  
     
     if "onnx" in framework : 
-        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json',BUCKET_NAME,f'results/tvm/intel/onnx/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json')
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_convert.json',BUCKET_NAME,f'results/tvm/intel/onnx/{model_name}_{model_size}_{batchsize}_convert.json')
         print("upload done : convert time results")
     else:
-        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json',BUCKET_NAME,f'results/tvm/intel/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json')
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_convert.json',BUCKET_NAME,f'results/tvm/intel/{model_name}_{model_size}_{batchsize}_convert.json')
         print("upload done : convert time results")
 
 

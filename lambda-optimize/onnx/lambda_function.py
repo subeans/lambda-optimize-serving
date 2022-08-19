@@ -114,7 +114,7 @@ def lambda_handler(event, context):
     if exist==False:
         if "onnx" in configuration["intel"] or "onnx" in configuration["arm"]:
             load_time, convert_time = optimize_onnx(workload_type,model_name,batchsize,model_size)
-            update_results(model_name,model_size,batchsize,lambda_memory,convert_time,load_time)
+            update_results(model_name,model_size,batchsize,convert_time,load_time)
 
     return {
             'workload_type':workload_type,

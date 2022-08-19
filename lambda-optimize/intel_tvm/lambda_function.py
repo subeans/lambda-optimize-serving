@@ -24,13 +24,20 @@ def check_results(prefix,model_size,model_name,batchsize):
             break
     return exist 
 
-def update_results(model_name,model_size,batchsize,lambda_memory,convert_time):
-    info = {'convert_time' : convert_time}
+def update_results(framework,model_name,model_size,batchsize,lambda_memory,convert_time,load_time):
+    info = {'base_model_load_time':load_time,
+            'convert_time' : convert_time}
+
     with open(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json','w') as f:
         json.dump(info, f, ensure_ascii=False, indent=4)  
     
-    s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json',BUCKET_NAME,f'results/tvm/intel/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json')
-    print("upload done : convert time results")
+    if "onnx" in framework : 
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json',BUCKET_NAME,f'results/tvm/intel/onnx/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json')
+        print("upload done : convert time results")
+    else:
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json',BUCKET_NAME,f'results/tvm/intel/{model_name}_{model_size}_{batchsize}_{lambda_memory}_convert.json')
+        print("upload done : convert time results")
+
 
 def load_model(framework,model_name,model_size):    
     import onnx
@@ -54,6 +61,12 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
     import tvm
     from tvm import relay
 
+    ######0. model load 
+    start_time = time.time()
+    model = load_model(framework,model_name,model_size)
+    load_time = time.time() - start_time
+
+    ######1. make dataset 
     # ImageClf input 
     if wtype == "img":
         if model_name == "inception_v3":
@@ -70,6 +83,7 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
         tokens_tensor = torch.tensor(np.array([inputs]))
         segments_tensors = torch.tensor(np.array([token_types]))
 
+    ######2. make model to tvm format 
     if "onnx" in framework:   
         framework="onnx"
         if wtype == "img":
@@ -104,6 +118,7 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
     else:
         assert layout == "NCHW"
 
+    #######3. tvm optimize 
     target = "llvm -mcpu=core-avx2"
     
     convert_start_time = time.time()
@@ -112,19 +127,18 @@ def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=
         lib = relay.build(mod, target=target, params=params)
     convert_time = time.time() - convert_start_time
 
+    ######4. tvm export and upload to s3
     os.makedirs(os.path.dirname(f'/tmp/tvm/intel/{model_name}/'), exist_ok=True)    
     lib.export_library(f"/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar")
     print("export done :",f"{model_name}_{batchsize}.tar")
 
     if framework=="onnx":
         s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/onnx/{model_name}_{model_size}_{batchsize}.tar')
-
     else:
         s3_client.upload_file(f'/tmp/tvm/intel/{model_name}/{model_name}_{batchsize}.tar',BUCKET_NAME,f'models/tvm/intel/{model_name}_{model_size}_{batchsize}.tar')
-    
     print("S3 upload done")
 
-    return convert_time
+    return load_time, convert_time
 
 def lambda_handler(event, context):    
     workload_type = event['workload_type']
@@ -137,23 +151,18 @@ def lambda_handler(event, context):
     lambda_memory = event['lambda_memory']
     convert_time = 0
 
-    # convert한 모델이 있는지 확인 
+    ##### 1.  convert한 모델이 있는지 확인 
     if "onnx" in framework:
         prefix = 'models/tvm/intel/onnx/'
     else:
         prefix = 'models/tvm/intel/'
     exist = check_results(prefix,model_size,model_name,batchsize)
-
+    
+    ##### 2. 없다면 convert 
     if exist == False:
         if "tvm" in configuration["intel"] :
-            start_time = time.time()
-            model = load_model(framework,model_name,model_size)
-            load_time = time.time() - start_time
-            print("Model load time : ",load_time)
-
-            print(f"Hardware optimize - {framework} model to TVM model")
-            convert_time = optimize_tvm(workload_type,framework,model,model_name,batchsize,model_size)
-            update_results(model_name,model_size,batchsize,lambda_memory,convert_time)
+            load_time,convert_time = optimize_tvm(workload_type,framework,model,model_name,batchsize,model_size)
+            update_results(framework, model_name,model_size,batchsize,lambda_memory,convert_time,load_time)
 
     return {
             'workload_type':workload_type,

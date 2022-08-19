@@ -21,6 +21,20 @@ def load_model(model_name, model_size):
 
     return model
 
+def update_results(model_name,model_size,batchsize,lambda_memory,inference_mean, inference_median,inf_time_list,running_time):
+    info = {
+            'inference_mean' : inference_mean,
+            'inference_median' : inference_median ,
+            'inference_all' : inf_time_list,
+            'inference_handler_time' : running_time
+    }
+
+    with open(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json','w') as f:
+        json.dump(info, f, ensure_ascii=False, indent=4)  
+    
+    s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json',BUCKET_NAME,f'results/base/intel/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json')
+    print("upload done : convert time results")
+
 
 def base_serving(wtype, model_name, model_size, batchsize, imgsize=224, repeat=10):
     model = load_model(model_name, model_size)
@@ -52,8 +66,11 @@ def base_serving(wtype, model_name, model_size, batchsize, imgsize=224, repeat=1
             running_time = time.time() - start_time
             time_list.append(running_time)
 
-    res = np.median(np.array(time_list[1:]))
-    return res
+    median = np.median(np.array(time_list[1:]))
+    mean = np.mean(np.array(time_list[1:]))
+
+    return mean, median , time_list
+
 
 def lambda_handler(event, context):
     workload_type = event['workload_type']
@@ -69,14 +86,11 @@ def lambda_handler(event, context):
     log_group_name = context.log_group_name
 
     if "base" in optimizer:
-        try:
-            start_time = time.time()
-            res = base_serving(workload_type, model_name, model_size, batchsize)
-            running_time = time.time() - start_time
-        except:
-            running_time=0
-            print(f"Error in {model_name} {model_size} {lambda_memory} {batchsize}") 
-            
+        start_time = time.time()
+        inference_mean, inference_median, inf_time_list = base_serving(workload_type, model_name, model_size, batchsize)
+        running_time = time.time() - start_time
+        update_results(model_name,model_size,batchsize,lambda_memory,inference_mean, inference_median,inf_time_list,running_time)
+
         return {
             'workload_type': workload_type,
             'model_name': model_name,
@@ -88,8 +102,6 @@ def lambda_handler(event, context):
             'batchsize': batchsize,
             'user_email': user_email,
             'execute': True,
-            'convert_time': 0,
-            'inference_time': running_time,
             'request_id': request_id,
             'log_group_name': log_group_name
         }

@@ -63,7 +63,7 @@ def upload_data(info,max_memory_used):
     
     # get convert_time 
     try:
-        convert_check = prefix + f'{model_name}_{model_size}_{batchsize}_{lambda_mem}_convert.json'
+        convert_check = prefix + f'{model_name}_{model_size}_{batchsize}_convert.json'
         convert_time = getLatency(prefix, convert_check, "convert_time")
     except:
         # base 인 경우 convert time 0 

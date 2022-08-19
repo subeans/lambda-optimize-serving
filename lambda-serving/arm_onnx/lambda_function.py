@@ -7,11 +7,9 @@ import boto3
 import onnxruntime as ort
 
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
-
+s3_client = boto3.client('s3')
 
 def load_model(model_name, model_size):
-    s3_client = boto3.client('s3')
-
     os.makedirs(os.path.dirname(f'/tmp/onnx/'), exist_ok=True)
     s3_client.download_file(BUCKET_NAME, f'models/onnx/{model_name}_{model_size}.onnx',
                             f'/tmp/onnx/{model_name}_{model_size}.onnx')

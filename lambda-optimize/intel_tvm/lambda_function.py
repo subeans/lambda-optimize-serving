@@ -57,7 +57,7 @@ def load_model(framework,model_name,model_size):
    
     return model
 
-def optimize_tvm(wtype,framework, model,model_name,batchsize,model_size,imgsize=224,seq_length=128, layout="NCHW"):
+def optimize_tvm(wtype,framework,model_name,batchsize,model_size,imgsize=224,seq_length=128, layout="NCHW"):
     import tvm
     from tvm import relay
 
@@ -161,7 +161,7 @@ def lambda_handler(event, context):
     ##### 2. 없다면 convert 
     if exist == False:
         if "tvm" in configuration["intel"] :
-            load_time,convert_time = optimize_tvm(workload_type,framework,model,model_name,batchsize,model_size)
+            load_time,convert_time = optimize_tvm(workload_type,framework,model_name,batchsize,model_size)
             update_results(framework, model_name,model_size,batchsize,lambda_memory,convert_time,load_time)
 
     return {

@@ -55,20 +55,20 @@ def getLatency(prefix, check , gettype):
 
     return get_latency
 
-def upload_data(info,max_memory_used):    
-    # get data from S3 
-    prefix = f'results/{info["optimizer"]}/{info["hardware"]}/'
-    
+def upload_data(info,max_memory_used):        
     # get convert_time 
     try:
         if info['optimizer'] == "onnx":
-            prefix = f'results/{info["optimizer"]}/'
-        convert_check = prefix + f'{info["model_name"]}_{info["model_size"]}_{info["batchsize"]}_convert.json'
-        convert_time = getLatency(prefix, convert_check, "convert_time")
+            convert_prefix = f'results/{info["optimizer"]}/'
+        else:
+            convert_prefix = f'results/{info["optimizer"]}/{info["hardware"]}/'
+        convert_check = convert_prefix + f'{info["model_name"]}_{info["model_size"]}_{info["batchsize"]}_convert.json'
+        convert_time = getLatency(convert_prefix, convert_check, "convert_time")
     except:
         # base 인 경우 convert time 0 
         convert_time = 0
     # get inference_time 
+    prefix = f'results/{info["optimizer"]}/{info["hardware"]}/'
     inference_check = prefix + f'{info["model_name"]}_{info["model_size"]}_{info["batchsize"]}_{info["lambda_memory"]}_inference.json'
     inference_time = getLatency(prefix,inference_check,"inference_median")
 

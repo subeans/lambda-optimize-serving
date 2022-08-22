@@ -57,13 +57,12 @@ def getLatency(prefix, check , gettype):
 
 def upload_data(info,max_memory_used):    
     # get data from S3 
-    if info['optimizer'] == "onnx":
-        prefix = f'results/{info["optimizer"]}/'
-    else:
-        prefix = f'results/{info["optimizer"]}/{info["hardware"]}/'
+    prefix = f'results/{info["optimizer"]}/{info["hardware"]}/'
     
     # get convert_time 
     try:
+        if info['optimizer'] == "onnx":
+            prefix = f'results/{info["optimizer"]}/'
         convert_check = prefix + f'{info["model_name"]}_{info["model_size"]}_{info["batchsize"]}_convert.json'
         convert_time = getLatency(prefix, convert_check, "convert_time")
     except:

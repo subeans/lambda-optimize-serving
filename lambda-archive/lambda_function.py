@@ -8,6 +8,7 @@ import time
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
 s3_client = boto3.client('s3') 
 log_client = boto3.client('logs')
+s3 = boto3.resource('s3') 
 
 def getMemoryUsed(info):
     request_id = info['request_id']

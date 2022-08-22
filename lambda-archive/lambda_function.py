@@ -38,7 +38,7 @@ def getMemoryUsed(info):
 
     return max_memory_used
 
-def getLatency(prefix, check , type):
+def getLatency(prefix, check , gettype):
     obj_list = s3_client.list_objects(Bucket=BUCKET_NAME,Prefix=prefix)
     contents_list = obj_list['Contents']
 
@@ -51,7 +51,7 @@ def getLatency(prefix, check , type):
             filejson = bytes_value.decode('utf8')
             fileobj = json.loads(filejson)
             print(fileobj)
-            get_latency = fileobj['type']
+            get_latency = fileobj[gettype]
 
     return get_latency
 

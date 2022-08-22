@@ -50,7 +50,7 @@ def getLatency(prefix, check , type):
             filejson = bytes_value.decode('utf8')
             fileobj = json.loads(filejson)
             print(fileobj)
-            get_latency = fileobj[type']
+            get_latency = fileobj['type']
 
     return get_latency
 
@@ -90,9 +90,9 @@ def upload_data(info,max_memory_used):
         }
 
 
-    with open(f'/tmp/{get_info['model_name']}_{get_info['model_size']}_{get_info['batchsize']}_{get_info['lambda_memory']}.json','w') as f:
+    with open(f'/tmp/{get_info["model_name"]}_{get_info["model_size"]}_{get_info["batchsize"]}_{get_info["lambda_memory"]}.json','w') as f:
         json.dump(get_info, f, ensure_ascii=False, indent=4)  
-    s3_client.upload_file(f'/tmp/{get_info['model_name']}_{get_info['model_size']}_{get_info['batchsize']}_{get_info['lambda_memory']}.json',BUCKET_NAME,f'results/{get_info['optimizer']}/{get_info['hardware']}/{get_info['model_name']}_{get_info['model_size']}_{get_info['batchsize']}_{get_info['lambda_memory']}.json')
+    s3_client.upload_file(f'/tmp/{get_info["model_name"]}_{get_info["model_size"]}_{get_info["batchsize"]}_{get_info["lambda_memory"]}.json',BUCKET_NAME,f'results/{get_info["optimizer"]}/{get_info["hardware"]}/{get_info["model_name"]}_{get_info["model_size"]}_{get_info["batchsize"]}_{get_info["lambda_memory"]}.json')
 
     return get_info
 

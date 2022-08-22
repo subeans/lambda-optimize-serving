@@ -46,7 +46,7 @@ def getLatency(prefix, check , type):
         # print(content)
         if content['Key']== check : 
             # 파일 내용을 읽어오기
-            obj = s3.Object(BUCKET_NAME,f"{convert_check}")
+            obj = s3.Object(BUCKET_NAME,f"{check}")
             bytes_value = obj.get()['Body'].read()
             filejson = bytes_value.decode('utf8')
             fileobj = json.loads(filejson)

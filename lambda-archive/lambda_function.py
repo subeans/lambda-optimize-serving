@@ -139,7 +139,7 @@ def lambda_handler(event, context):
                 'optimizer':event[i]['optimizer'],
                 'lambda_memory':event[i]['lambda_memory'],
                 'batchsize':event[i]['batchsize'],
-                'user_email':event[i]['user_email']
+                'user_email':event[i]['user_email'],
                 'request_id':event[i]['request_id'],
                 'log_group_name':event[i]['log_group_name']
             }

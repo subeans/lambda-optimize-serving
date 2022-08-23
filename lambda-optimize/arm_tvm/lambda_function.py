@@ -119,7 +119,7 @@ def optimize_tvm(wtype,framework,model_name,batchsize,model_size,imgsize=224,seq
         assert layout == "NCHW"
 
     #######3. tvm optimize 
-    target = "llvm -mcpu=core-avx2"
+    target = tvm.target.arm_cpu()
     
     convert_start_time = time.time()
     with tvm.transform.PassContext(opt_level=3,required_pass=["FastMath"]):

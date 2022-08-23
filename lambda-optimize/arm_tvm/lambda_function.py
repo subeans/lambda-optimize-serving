@@ -149,7 +149,6 @@ def lambda_handler(event, context):
     batchsize = event['batchsize']
     user_email = event ['user_email']
     lambda_memory = event['lambda_memory']
-    convert_time = 0
 
     ##### 1.  convert한 모델이 있는지 확인 
     if "onnx" in framework:

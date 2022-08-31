@@ -58,7 +58,7 @@ def getLatency(prefix, check , gettype):
 def upload_data(info,max_memory_used):        
     # get convert_time 
     try:
-        if info['optimizer'] == "onnx":
+        if info["optimizer"] == "onnx":
             convert_prefix = f'results/{info["optimizer"]}/'
             convert_check = convert_prefix + f'{info["model_name"]}_{info["model_size"]}_convert.json'
         else:

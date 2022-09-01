@@ -32,10 +32,10 @@ def update_results(framework,model_name,model_size,batchsize,convert_time,load_t
         json.dump(info, f, ensure_ascii=False, indent=4)  
     
     if "onnx" in framework : 
-        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_convert.json',BUCKET_NAME,f'results/convert/tvm/arm/onnx/{model_name}_{model_size}_{batchsize}_convert.json')
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_convert.json',BUCKET_NAME,f'results/convert/tvm/arm/onnx/convert/{model_name}_{model_size}_{batchsize}_convert.json')
         print("upload done : convert time results")
     else:
-        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_convert.json',BUCKET_NAME,f'results/convert/tvm/arm/{model_name}_{model_size}_{batchsize}_convert.json')
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_convert.json',BUCKET_NAME,f'results/convert/tvm/arm/convert/{model_name}_{model_size}_{batchsize}_convert.json')
         print("upload done : convert time results")
 
 

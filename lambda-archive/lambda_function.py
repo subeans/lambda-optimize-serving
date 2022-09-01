@@ -62,7 +62,7 @@ def upload_data(info,max_memory_used):
             convert_prefix = f'results/{info["optimizer"]}/convert/'
             convert_check = convert_prefix + f'{info["model_name"]}_{info["model_size"]}_convert.json'
         else:
-            convert_prefix = f'results/convert/{info["optimizer"]}/{info["hardware"]}/convert/'
+            convert_prefix = f'results/{info["optimizer"]}/{info["hardware"]}/convert/'
             convert_check = convert_prefix + f'{info["model_name"]}_{info["model_size"]}_{info["batchsize"]}_convert.json'
         convert_time = getLatency(convert_prefix, convert_check, "convert_time")
     except:

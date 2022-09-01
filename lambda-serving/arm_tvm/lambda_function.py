@@ -37,10 +37,10 @@ def update_results(framework,model_name,model_size,batchsize,lambda_memory,infer
         json.dump(info, f, ensure_ascii=False, indent=4)  
     
     if "onnx" in framework :
-        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json',BUCKET_NAME,f'results/tvm/arm/onnx/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json')
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json',BUCKET_NAME,f'results/tvm/arm/onnx/inference/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json')
         print("upload done : convert time results")
     else:
-        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json',BUCKET_NAME,f'results/tvm/arm/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json')
+        s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json',BUCKET_NAME,f'results/tvm/arm/inference/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json')
         print("upload done : convert time results")      
 
 

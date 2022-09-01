@@ -32,7 +32,7 @@ def update_results(model_name,model_size,batchsize,lambda_memory,inference_mean,
     with open(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json','w') as f:
         json.dump(info, f, ensure_ascii=False, indent=4)  
     
-    s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json',BUCKET_NAME,f'results/base/intel/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json')
+    s3_client.upload_file(f'/tmp/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json',BUCKET_NAME,f'results/base/intel/inference/{model_name}_{model_size}_{batchsize}_{lambda_memory}_inference.json')
     print("upload done : convert time results")
 
 

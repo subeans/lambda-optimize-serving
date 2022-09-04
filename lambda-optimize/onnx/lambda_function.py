@@ -76,15 +76,14 @@ def optimize_onnx(wtype,model_name,batchsize,model_size,imgsize=224,seq_length=1
                                 'output0' : {0 : 'batch_size'}})
 
     elif wtype=="nlp":
-        inputs = np.random.randint(0, 2000, size=(seq_length))
-        token_types = np.random.randint(0,2,size=(seq_length))
+        inputs = np.random.randint(0, 2000, size=(batchsize,seq_length))
+        token_types = np.random.randint(0,2,size=(batchsize,seq_length))
 
         tokens_tensor = torch.tensor(np.array([inputs]))
         segments_tensors = torch.tensor(np.array([token_types]))
 
         torch.onnx.export(model,(tokens_tensor,segments_tensors), output_onnx, export_params=True, verbose=False,do_constant_folding=True,
-                                input_names=input_names, output_names=output_names,dynamic_axes= {'input0' : {0 : 'batch_size'},    # variable length axes
-                                'output0' : {0 : 'batch_size'}})
+                                input_names=input_names, output_names=output_names)
 
 
     convert_time = time.time()-convert_start_time

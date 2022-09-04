@@ -57,7 +57,7 @@ def load_model(framework,model_name,model_size):
    
     return model
 
-def optimize_tvm(wtype,framework,model_name,batchsize,model_size,imgsize=224,seq_length=128, layout="NCHW"):
+def optimize_tvm(wtype,framework,model_name,batchsize,model_size,imgsize=224,seq_length=128, layout="NCHW",dtype="float32"):
     import tvm
     from tvm import relay
 
@@ -77,11 +77,11 @@ def optimize_tvm(wtype,framework,model_name,batchsize,model_size,imgsize=224,seq
 
     # NLP input 
     elif wtype == "nlp":
-        inputs = np.random.randint(0, 2000, size=(seq_length))
-        token_types = np.random.randint(0,2,size=(seq_length))
+        inputs = np.random.randint(0, 2000, size=(batchsize, seq_length)).astype(dtype)
+        token_types = np.random.uniform(size=(batchsize, seq_length)).astype(dtype)
 
-        tokens_tensor = torch.tensor(np.array([inputs]*batchsize))
-        segments_tensors = torch.tensor(np.array([token_types]*batchsize))
+        tokens_tensor = torch.tensor(np.array([inputs]))
+        segments_tensors = torch.tensor(np.array([token_types]))
 
     ######2. make model to tvm format 
     if "onnx" in framework:   

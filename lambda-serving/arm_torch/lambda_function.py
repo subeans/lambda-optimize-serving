@@ -4,7 +4,6 @@ from json import load
 import numpy as np
 import os
 import boto3
-import hashlib
 import torch
 
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
@@ -38,7 +37,7 @@ def update_results(model_name,model_size,batchsize,lambda_memory,inference_mean,
 
 
 
-def base_serving(wtype, model_name, model_size, batchsize, imgsize=224, repeat=10):
+def base_serving(wtype, model_name, model_size, batchsize, imgsize=224, seq_length = 128,dtype = "float32",repeat=10):
     model = load_model(model_name, model_size)
     model.eval()
 
@@ -56,12 +55,10 @@ def base_serving(wtype, model_name, model_size, batchsize, imgsize=224, repeat=1
             time_list.append(running_time)
 
     elif wtype == 'nlp':
-        model.hybridize(static_alloc=True)
-        seq_length = 128
-        dtype = "float32"
         inputs = np.random.randint(0, 2000, size=(batchsize, seq_length)).astype(dtype)
         token_types = np.random.uniform(size=(batchsize, seq_length)).astype(dtype)
         valid_length = np.asarray([seq_length] * batchsize).astype(dtype)
+        
         for i in range(repeat):
             start_time = time.time()
             model(inputs, token_types, valid_length)

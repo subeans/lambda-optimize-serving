@@ -80,8 +80,8 @@ def optimize_tvm(wtype,framework,model_name,batchsize,model_size,imgsize=224,seq
         inputs = np.random.randint(0, 2000, size=(batchsize, seq_length)).astype(dtype)
         token_types = np.random.uniform(size=(batchsize, seq_length)).astype(dtype)
 
-        tokens_tensor = torch.tensor(np.array([inputs]))
-        segments_tensors = torch.tensor(np.array([token_types]))
+        tokens_tensor = torch.tensor(np.array(inputs))
+        segments_tensors = torch.tensor(np.array(token_types))
 
     ######2. make model to tvm format 
     if "onnx" in framework:   

@@ -63,10 +63,11 @@ def optimize_onnx(wtype,model_name,batchsize,model_size,imgsize=224,seq_length=1
     print("Exporting model to ONNX format at '{}'".format(output_onnx))
 
     convert_start_time = time.time()
-    input_names = ["input0"]
-    output_names = ["output0"]
+    
 
     if wtype == "img": 
+        input_names = ["input0"]
+        output_names = ["output0"]
         if model_name == "inception_v3":
             imgsize=299  
         inputs = torch.randn(batchsize, 3, imgsize, imgsize)
@@ -76,14 +77,17 @@ def optimize_onnx(wtype,model_name,batchsize,model_size,imgsize=224,seq_length=1
                                 'output0' : {0 : 'batch_size'}})
 
     elif wtype=="nlp":
+        input_names = ["input_ids","token_type_ids"]
+        
         inputs = np.random.randint(0, 2000, size=(batchsize,seq_length))
         token_types = np.random.randint(0,2,size=(batchsize,seq_length))
 
-        tokens_tensor = torch.tensor(np.array([inputs]))
-        segments_tensors = torch.tensor(np.array([token_types]))
+        tokens_tensor = torch.tensor(np.array(inputs))
+        segments_tensors = torch.tensor(np.array(token_types))
 
         torch.onnx.export(model,(tokens_tensor,segments_tensors), output_onnx, export_params=True, verbose=False,do_constant_folding=True,
-                                input_names=input_names, output_names=output_names)
+                                input_names=input_names,dynamic_axes= {'input_ids' : {0: 'batch_size', 1: 'max_seq_len'},    # variable length axes
+                                'token_type_ids' : {0: 'batch_size', 1: 'max_seq_len'}})
 
 
     convert_time = time.time()-convert_start_time
@@ -95,6 +99,7 @@ def optimize_onnx(wtype,model_name,batchsize,model_size,imgsize=224,seq_length=1
     print("S3 upload done")
 
     return load_time,convert_time
+
 
 
 def lambda_handler(event, context):    

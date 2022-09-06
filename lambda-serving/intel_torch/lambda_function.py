@@ -36,7 +36,7 @@ def update_results(model_name,model_size,batchsize,lambda_memory,inference_mean,
     print("upload done : inference time results")
 
 
-def base_serving(wtype, model_name, model_size, batchsize, imgsize=224,seq_length = 128,dtype="float32", repeat=10):
+def base_serving(wtype, model_name, model_size, batchsize, imgsize=224,seq_length = 128, repeat=10):
     model = load_model(model_name, model_size)
     model.eval()
 
@@ -54,12 +54,14 @@ def base_serving(wtype, model_name, model_size, batchsize, imgsize=224,seq_lengt
             time_list.append(running_time)
 
     elif wtype == 'nlp':
-        inputs = np.random.randint(0, 2000, size=(batchsize, seq_length)).astype(dtype)
-        token_types = np.random.uniform(size=(batchsize, seq_length)).astype(dtype)
-        valid_length = np.asarray([seq_length] * batchsize).astype(dtype)
+        inputs = np.random.randint(0, 2000, size=(batchsize, seq_length)).astype("int")
+        token_types = np.random.uniform(size=(batchsize, seq_length)).astype("int")
+        tokens_tensor = torch.tensor(np.array(inputs))
+        segments_tensors = torch.tensor(np.array(token_types))
+        
         for i in range(repeat):
             start_time = time.time()
-            model(inputs, token_types, valid_length)
+            model(tokens_tensor, segments_tensors)
             running_time = time.time() - start_time
             time_list.append(running_time)
 
